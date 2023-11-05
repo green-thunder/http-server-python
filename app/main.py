@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 import socket
-import sys
 import threading
 
 def getPath(data):
@@ -34,10 +33,20 @@ def getFileContent(directory_path, file_path):
     
     return False, ""
 
+def getBody(data: str):
+    decoded_data = data[data.find(b"\r\n\r\n") + 4 :]
+    return decoded_data.decode()
 
-def handle_request(sock: socket.socket, directory_path: str):
+def writeToFile(directory_path, file_path: str, content):
+    whole_path = Path(directory_path).joinpath(Path(file_path))
+    if Path(directory_path).exists() and bool(file_path.strip()):
+        with open(whole_path, "w") as file:
+            file.write(content)
+            file.close()
+        return True
+    return False
 
-    data = sock.recv(1024)
+def handle_GET_request(data: str, sock: socket.socket, directory_path: str):
     path = getPath(data)
     
     if path == "/":
@@ -82,13 +91,36 @@ def handle_request(sock: socket.socket, directory_path: str):
         sock.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
     sock.close()
 
+def handle_POST_request(data: str, sock: socket.socket, directory_path: str):
+    path = getPath(data)
+    if path.startswith("/files/"):
+        body = getBody(data)
+        file_path = path.split("/files/")[1]
+        success = writeToFile(directory_path, file_path, body)
+        if success:
+            sock.send(b"HTTP/1.1 201 Created\r\n\r\n")
+        else:
+            sock.send(b"HTTP/1.1 404 Not Found\r\n\r\n")
+    else:
+        sock.send(b"HTTP/1.1 404 Not Found\r\n\r\n")
+    sock.close()
+
+def handle_request(sock: socket.socket, directory_path: str):
+
+    data = sock.recv(1024)
+    if "GET" in data.decode():
+        handle_GET_request(data, sock, directory_path)
+    if "POST" in data.decode():
+        handle_POST_request(data, sock, directory_path)
+
+
+
 def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--directory", help="the directory path")
     args = parser.parse_args()
     directory_path = args.directory or None
-    print(directory_path)
 
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     while True:
