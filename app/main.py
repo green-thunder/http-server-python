@@ -8,6 +8,15 @@ def getPath(data):
 
     return path
 
+def getHeaderUserAgent(data):
+
+    decoded_data = data.decode()
+    first_line = decoded_data.split("\r\n")
+
+    for header in first_line:
+        if header.startswith("User-Agent:"):
+            return header.split(" ")[1]
+
 def main():
     
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
@@ -17,7 +26,9 @@ def main():
     
     if path == "/":
         sock.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+
     elif path.startswith("/echo/"):
+        
         message = path.split("/echo/")[1]
         sock.send(b"HTTP/1.1 200 OK\r\n")
         sock.send(b"Content-Type: text/plain\r\n")
@@ -25,6 +36,17 @@ def main():
         sock.send(length.encode())
         sock.send(b"\r\n")
         sock.send(message.encode())
+
+    elif path == "/user-agent":
+
+        message = getHeaderUserAgent(data)
+        sock.send(b"HTTP/1.1 200 OK\r\n")
+        sock.send(b"Content-Type: text/plain\r\n")
+        length = f"Content-Length: {len(message)} \r\n"
+        sock.send(length.encode())
+        sock.send(b"\r\n")
+        sock.send(message.encode())
+
     else:
         sock.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
