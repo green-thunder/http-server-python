@@ -17,6 +17,14 @@ def main():
     
     if path == "/":
         sock.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+    elif path.startswith("/echo/"):
+        message = path.split("/echo/")[1]
+        sock.send(b"HTTP/1.1 200 OK\r\n")
+        sock.send(b"Content-Type: text/plain\r\n")
+        length = f"Content-Length: {len(message)} \r\n"
+        sock.send(length.encode())
+        sock.send(b"\r\n")
+        sock.send(message.encode())
     else:
         sock.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
