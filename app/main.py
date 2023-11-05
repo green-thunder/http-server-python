@@ -1,4 +1,5 @@
 import socket
+import threading
 
 def getPath(data):
 
@@ -17,10 +18,8 @@ def getHeaderUserAgent(data):
         if header.startswith("User-Agent:"):
             return header.split(" ")[1]
 
-def main():
-    
-    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    sock, addr = server_socket.accept()  # wait for client
+def handle_request(sock: socket.socket):
+
     data = sock.recv(1024)
     path = getPath(data)
     
@@ -49,6 +48,15 @@ def main():
 
     else:
         sock.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+    sock.close()
+
+def main():
+    
+    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+    while True:
+        sock, addr = server_socket.accept()  # wait for client
+        thread = threading.Thread(target=handle_request, args=(sock,)).start()
+
 
 if __name__ == "__main__":
     main()
